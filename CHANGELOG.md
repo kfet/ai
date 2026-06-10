@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-10
+
+### Added
+
+- `Model.AdaptiveThinking` (`json:"adaptiveThinking,omitempty"`): marks models
+  with always-on, effort-based adaptive thinking that cannot disable thinking
+  or set an explicit token budget. Additive, non-breaking.
+
 ## [0.1.0] - 2026-06-10
 
 ### Changed
