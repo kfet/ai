@@ -48,7 +48,7 @@ func IsRateLimitText(text string) bool {
 // IsTransientServerError returns true if the error text indicates a transient
 // server-side failure (e.g. "Internal server error", HTTP 502/503/504) that is
 // worth retrying, especially when no tokens have been consumed.
-// Re-exports pkg/ai/ai.IsTransientServerError.
+// Re-exports github.com/kfet/ai.IsTransientServerError.
 func IsTransientServerError(text string) bool {
 	return ai.IsTransientServerError(text)
 }
@@ -56,7 +56,7 @@ func IsTransientServerError(text string) bool {
 // IsTransientNetworkError returns true if the error text indicates a transient
 // transport-level failure (TCP reset, broken pipe, DNS hiccup, TLS handshake
 // timeout, HTTP/2 GOAWAY, unexpected EOF, …) that is safe to retry when
-// streaming has not yet begun. Re-exports pkg/ai/ai.IsTransientNetworkError.
+// streaming has not yet begun. Re-exports github.com/kfet/ai.IsTransientNetworkError.
 func IsTransientNetworkError(text string) bool {
 	return ai.IsTransientNetworkError(text)
 }
@@ -64,7 +64,7 @@ func IsTransientNetworkError(text string) bool {
 // IsRetryableError returns true if the error text is a rate-limit condition,
 // a transient server error, or a transient network/transport error — i.e.
 // safe to retry when streaming has not yet begun.
-// Re-exports pkg/ai/ai.IsRetryableError.
+// Re-exports github.com/kfet/ai.IsRetryableError.
 func IsRetryableError(text string) bool {
 	return ai.IsRetryableError(text)
 }

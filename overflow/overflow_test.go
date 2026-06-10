@@ -10,7 +10,7 @@ import (
 func makeErrorMsg(errorMsg string) *ai.AssistantMessage {
 	return &ai.AssistantMessage{
 		Role:         ai.RoleAssistant,
-		Api:          ai.ApiAnthropicMessages,
+		API:          ai.APIAnthropicMessages,
 		Provider:     ai.ProviderAnthropic,
 		Model:        "claude-3",
 		StopReason:   ai.StopReasonError,

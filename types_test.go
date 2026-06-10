@@ -93,7 +93,7 @@ func TestMessage_RoundTrip(t *testing.T) {
 		NewUserMsg("hello", 1000),
 		NewAssistantMsg(AssistantMessage{
 			Content:    []AssistantContent{NewTextContent("hi")},
-			Api:        ApiAnthropicMessages,
+			API:        APIAnthropicMessages,
 			Provider:   ProviderAnthropic,
 			Model:      "claude-3",
 			Usage:      Usage{Input: 10, Output: 20, TotalTokens: 30},

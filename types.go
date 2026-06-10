@@ -28,19 +28,19 @@ const (
 
 // --- API and Provider identifiers ---
 
-// Api identifies the wire protocol used to communicate with a provider.
-type Api = string
+// API identifies the wire protocol used to communicate with a provider.
+type API = string
 
 // Known API constants.
 const (
-	ApiOpenAICompletions     Api = "openai-completions"
-	ApiOpenAIResponses       Api = "openai-responses"
-	ApiAzureOpenAIResponses  Api = "azure-openai-responses"
-	ApiOpenAICodexResponses  Api = "openai-codex-responses"
-	ApiAnthropicMessages     Api = "anthropic-messages"
-	ApiBedrockConverseStream Api = "bedrock-converse-stream"
-	ApiGoogleGenerativeAI    Api = "google-generative-ai"
-	ApiGoogleVertex          Api = "google-vertex"
+	APIOpenAICompletions     API = "openai-completions"
+	APIOpenAIResponses       API = "openai-responses"
+	APIAzureOpenAIResponses  API = "azure-openai-responses"
+	APIOpenAICodexResponses  API = "openai-codex-responses"
+	APIAnthropicMessages     API = "anthropic-messages"
+	APIBedrockConverseStream API = "bedrock-converse-stream"
+	APIGoogleGenerativeAI    API = "google-generative-ai"
+	APIGoogleVertex          API = "google-vertex"
 )
 
 // Provider identifies a model hosting service.
@@ -206,8 +206,8 @@ type ProviderResponse struct {
 type StreamOptions struct {
 	Temperature    *float64       `json:"temperature,omitempty"`
 	MaxTokens      *int           `json:"maxTokens,omitempty"`
-	ApiKey         string         `json:"apiKey,omitempty"`
-	ApiKeyError    string         `json:"apiKeyError,omitempty"` // detail about why API key resolution failed (e.g. OAuth refresh error)
+	APIKey         string         `json:"apiKey,omitempty"`
+	APIKeyError    string         `json:"apiKeyError,omitempty"` // detail about why API key resolution failed (e.g. OAuth refresh error)
 	Transport      Transport      `json:"transport,omitempty"`
 	CacheRetention CacheRetention `json:"cacheRetention,omitempty"`
 	SessionID      string         `json:"sessionId,omitempty"`
@@ -218,9 +218,9 @@ type StreamOptions struct {
 	// OnResponse is an optional callback invoked after an HTTP response is
 	// received and before its body stream is consumed.
 	OnResponse func(response ProviderResponse, model *Model) `json:"-"`
-	// RefreshApiKey is called on 401/auth errors to obtain a fresh API key
+	// RefreshAPIKey is called on 401/auth errors to obtain a fresh API key
 	// (e.g. after OAuth token refresh). Returns "" if no refresh is available.
-	RefreshApiKey func(provider string) string `json:"-"`
+	RefreshAPIKey func(provider string) string `json:"-"`
 	Headers       map[string]string            `json:"headers,omitempty"`
 	// TimeoutMs is the HTTP request timeout in milliseconds for providers/SDKs that support it.
 	// For example, OpenAI and Anthropic SDK clients default to 10 minutes.
@@ -277,13 +277,12 @@ type ImageContent struct {
 }
 
 // ServerContent is a generic passthrough for provider-side content blocks
-// that fir does not interpret semantically (e.g. Anthropic's
+// that this package does not interpret semantically (e.g. Anthropic's
 // `server_tool_use`, `web_search_tool_result`, …). Raw carries the
 // original content_block JSON byte-stable for replay; Display is a
-// pre-formatted human-readable rendering for the transcript. See
-// BACKLOG.md for the motivation.
+// pre-formatted human-readable rendering for the transcript.
 type ServerContent struct {
-	Type         string          `json:"type"` // fir-internal discriminator, always "server"
+	Type         string          `json:"type"` // internal discriminator, always "server"
 	ProviderType string          `json:"providerType"`
 	Raw          json.RawMessage `json:"raw"`
 	Display      string          `json:"display,omitempty"`
@@ -340,20 +339,22 @@ const (
 // --- Messages ---
 
 // UserMessage is a message from the user.
+//
+// Content is either a plain string or a []any whose elements are
+// TextContent or ImageContent values. It is deliberately typed as any to
+// match the provider wire shape, where user content may be a bare string
+// or a heterogeneous block list.
 type UserMessage struct {
 	Role      string `json:"role"`      // always "user"
-	Content   any    `json:"content"`   // string or []UserContentBlock
+	Content   any    `json:"content"`   // string, or []any of TextContent | ImageContent
 	Timestamp int64  `json:"timestamp"` // Unix ms
 }
-
-// UserContentBlock is either TextContent or ImageContent in a UserMessage.
-type UserContentBlock = any
 
 // AssistantMessage is a message from the assistant.
 type AssistantMessage struct {
 	Role          string             `json:"role"` // always "assistant"
 	Content       []AssistantContent `json:"content"`
-	Api           Api                `json:"api"`
+	API           API                `json:"api"`
 	Provider      Provider           `json:"provider"`
 	Model         string             `json:"model"`
 	ResponseModel string             `json:"responseModel,omitempty"` // Concrete chunk.model when different from requested model (e.g. OpenRouter "auto" -> "anthropic/...")
@@ -697,131 +698,6 @@ func (e *AssistantMessageEvent) FinalMessage() *AssistantMessage {
 	return nil
 }
 
-// --- OpenAI compatibility settings ---
-
-// ThinkingFormat controls how reasoning/thinking is sent to the provider.
-type ThinkingFormat string
-
-const (
-	ThinkingFormatOpenAI      ThinkingFormat = "openai"
-	ThinkingFormatOpenRouter  ThinkingFormat = "openrouter"
-	ThinkingFormatDeepSeek    ThinkingFormat = "deepseek"
-	ThinkingFormatZAI         ThinkingFormat = "zai"
-	ThinkingFormatQwen        ThinkingFormat = "qwen"
-	ThinkingFormatQwenChatTpl ThinkingFormat = "qwen-chat-template"
-)
-
-// MaxTokensField controls which JSON field name is used for max tokens.
-type MaxTokensField string
-
-const (
-	MaxTokensFieldMaxCompletionTokens MaxTokensField = "max_completion_tokens"
-	MaxTokensFieldMaxTokens           MaxTokensField = "max_tokens"
-)
-
-// OpenAICompletionsCompat holds compatibility overrides for OpenAI-compatible completions APIs.
-type OpenAICompletionsCompat struct {
-	SupportsStore                               *bool                 `json:"supportsStore,omitempty"`
-	SupportsDeveloperRole                       *bool                 `json:"supportsDeveloperRole,omitempty"`
-	SupportsReasoningEffort                     *bool                 `json:"supportsReasoningEffort,omitempty"`
-	ReasoningEffortMap                          map[string]string     `json:"reasoningEffortMap,omitempty"`
-	SupportsUsageInStreaming                    *bool                 `json:"supportsUsageInStreaming,omitempty"`
-	MaxTokensField                              MaxTokensField        `json:"maxTokensField,omitempty"`
-	RequiresToolResultName                      *bool                 `json:"requiresToolResultName,omitempty"`
-	RequiresAssistantAfterToolResult            *bool                 `json:"requiresAssistantAfterToolResult,omitempty"`
-	RequiresThinkingAsText                      *bool                 `json:"requiresThinkingAsText,omitempty"`
-	RequiresReasoningContentOnAssistantMessages *bool                 `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
-	ThinkingFormat                              ThinkingFormat        `json:"thinkingFormat,omitempty"`
-	OpenRouterRouting                           *OpenRouterRouting    `json:"openRouterRouting,omitempty"`
-	VercelGatewayRouting                        *VercelGatewayRouting `json:"vercelGatewayRouting,omitempty"`
-	// ZaiToolStream: whether z.ai supports top-level `tool_stream: true` for
-	// streaming tool call deltas. Default: false.
-	ZaiToolStream      *bool `json:"zaiToolStream,omitempty"`
-	SupportsStrictMode *bool `json:"supportsStrictMode,omitempty"`
-	// CacheControlFormat controls prompt caching convention. "anthropic" applies
-	// Anthropic-style cache_control markers to system prompt, last tool definition,
-	// and last user/assistant text content.
-	CacheControlFormat string `json:"cacheControlFormat,omitempty"` // "anthropic" or ""
-	// SendSessionAffinityHeaders: whether to send session_id, x-client-request-id,
-	// x-session-affinity headers from options.sessionId when caching is enabled.
-	SendSessionAffinityHeaders *bool `json:"sendSessionAffinityHeaders,omitempty"`
-	// SupportsLongCacheRetention: whether the provider supports long prompt cache
-	// retention (prompt_cache_retention: "24h" or Anthropic-style cache_control.ttl: "1h").
-	SupportsLongCacheRetention *bool `json:"supportsLongCacheRetention,omitempty"`
-}
-
-// OpenAIResponsesCompat holds compatibility overrides for OpenAI Responses APIs.
-type OpenAIResponsesCompat struct {
-	// SendSessionIdHeader: whether to send the OpenAI session_id cache-affinity header
-	// from options.sessionId when caching is enabled. Default: true.
-	SendSessionIdHeader *bool `json:"sendSessionIdHeader,omitempty"`
-	// SupportsLongCacheRetention: whether the provider supports prompt_cache_retention: "24h". Default: true.
-	SupportsLongCacheRetention *bool `json:"supportsLongCacheRetention,omitempty"`
-}
-
-// AnthropicMessagesCompat holds compatibility overrides for Anthropic Messages-compatible APIs.
-type AnthropicMessagesCompat struct {
-	// SupportsEagerToolInputStreaming: whether the provider accepts per-tool eager_input_streaming.
-	// When false, the Anthropic provider omits tools[].eager_input_streaming and sends the legacy
-	// fine-grained-tool-streaming beta header for tool-enabled requests. Default: true.
-	SupportsEagerToolInputStreaming *bool `json:"supportsEagerToolInputStreaming,omitempty"`
-	// SupportsLongCacheRetention: whether the provider supports Anthropic long cache retention
-	// (cache_control.ttl: "1h"). Default: true.
-	SupportsLongCacheRetention *bool `json:"supportsLongCacheRetention,omitempty"`
-}
-
-// OpenRouterRouting configures OpenRouter provider routing preferences.
-// Sent as the `provider` field in the OpenRouter API request body.
-// See https://openrouter.ai/docs/guides/routing/provider-selection
-type OpenRouterRouting struct {
-	// AllowFallbacks: whether to allow backup providers to serve requests. Default: true.
-	AllowFallbacks *bool `json:"allow_fallbacks,omitempty"`
-	// RequireParameters: whether to filter providers to only those that support
-	// all parameters in the request. Default: false.
-	RequireParameters *bool `json:"require_parameters,omitempty"`
-	// DataCollection: "allow" (default) or "deny".
-	DataCollection string `json:"data_collection,omitempty"`
-	// ZDR: restrict routing to only Zero Data Retention endpoints.
-	ZDR *bool `json:"zdr,omitempty"`
-	// EnforceDistillableText: restrict routing to only models that allow text distillation.
-	EnforceDistillableText *bool `json:"enforce_distillable_text,omitempty"`
-	// Order: an ordered list of provider names/slugs to try in sequence.
-	Order []string `json:"order,omitempty"`
-	// Only: providers to exclusively allow for this request.
-	Only []string `json:"only,omitempty"`
-	// Ignore: providers to skip for this request.
-	Ignore []string `json:"ignore,omitempty"`
-	// Quantizations: quantization levels to filter providers by.
-	Quantizations []string `json:"quantizations,omitempty"`
-	// Sort: sorting strategy. Either a string (e.g. "price", "throughput", "latency")
-	// or an object with `by` and `partition`. Use any for the union.
-	Sort any `json:"sort,omitempty"`
-	// MaxPrice: maximum price per million tokens (USD).
-	MaxPrice *OpenRouterMaxPrice `json:"max_price,omitempty"`
-	// PreferredMinThroughput: preferred minimum throughput (tokens/second).
-	// Can be a number or an object with p50/p75/p90/p99 cutoffs.
-	PreferredMinThroughput any `json:"preferred_min_throughput,omitempty"`
-	// PreferredMaxLatency: preferred maximum latency (seconds).
-	// Can be a number or an object with p50/p75/p90/p99 cutoffs.
-	PreferredMaxLatency any `json:"preferred_max_latency,omitempty"`
-}
-
-// OpenRouterMaxPrice represents maximum price limits per million tokens.
-// Values can be numbers or strings (OpenRouter accepts both), so we use any.
-type OpenRouterMaxPrice struct {
-	Prompt     any `json:"prompt,omitempty"`
-	Completion any `json:"completion,omitempty"`
-	Image      any `json:"image,omitempty"`
-	Audio      any `json:"audio,omitempty"`
-	Request    any `json:"request,omitempty"`
-}
-
-// VercelGatewayRouting configures Vercel AI Gateway routing preferences.
-type VercelGatewayRouting struct {
-	Only  []string `json:"only,omitempty"`
-	Order []string `json:"order,omitempty"`
-}
-
 // --- Model ---
 
 // InputModality represents what a model can accept.
@@ -844,7 +720,7 @@ type ModelCost struct {
 type Model struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
-	Api           Api               `json:"api"`
+	API           API               `json:"api"`
 	Provider      Provider          `json:"provider"`
 	BaseURL       string            `json:"baseUrl"`
 	Reasoning     bool              `json:"reasoning"`
@@ -862,7 +738,7 @@ type Model struct {
 	// ReasoningEffortValues is the allowed enum of values for reasoning.effort /
 	// reasoning_effort when the provider exposes a bot-specific restriction
 	// (e.g. Poe bots whose /v1/models parameters[] advertise an "effort" enum
-	// narrower than fir's {minimal,low,medium,high,xhigh}). Empty means "no
+	// narrower than the full {minimal,low,medium,high,xhigh} set). Empty means "no
 	// known restriction — use the provider default".
 	ReasoningEffortValues []string `json:"reasoningEffortValues,omitempty"`
 }
@@ -886,30 +762,6 @@ func (m *Model) SupportsServerTool(toolType string) bool {
 // SupportsAnyServerTools returns true if the model supports any server tools.
 func (m *Model) SupportsAnyServerTools() bool {
 	return len(m.ServerTools) > 0
-}
-
-// GetOpenAICompletionsCompat returns the OpenAI completions compat settings, or nil.
-func (m *Model) GetOpenAICompletionsCompat() *OpenAICompletionsCompat {
-	if c, ok := m.Compat.(*OpenAICompletionsCompat); ok {
-		return c
-	}
-	return nil
-}
-
-// GetOpenAIResponsesCompat returns the OpenAI responses compat settings, or nil.
-func (m *Model) GetOpenAIResponsesCompat() *OpenAIResponsesCompat {
-	if c, ok := m.Compat.(*OpenAIResponsesCompat); ok {
-		return c
-	}
-	return nil
-}
-
-// GetAnthropicMessagesCompat returns the Anthropic messages compat settings, or nil.
-func (m *Model) GetAnthropicMessagesCompat() *AnthropicMessagesCompat {
-	if c, ok := m.Compat.(*AnthropicMessagesCompat); ok {
-		return c
-	}
-	return nil
 }
 
 // BoolPtr returns a pointer to the given bool value.

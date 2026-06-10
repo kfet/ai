@@ -3,9 +3,9 @@ package ai
 import "regexp"
 
 // This file holds portable, dependency-free error-classification predicates
-// shared by the agent loop and provider retry loops. They operate purely on
-// error-message text (no fir-side or pkg/ai types), so they live in core where
-// both pkg/agent and pkg/ai consumers can reach them. pkg/ai/ratelimit
+// shared by agent loops and provider retry loops. They operate purely on
+// error-message text (no other types from this module), so they live in the
+// root package where all consumers can reach them. The ratelimit subpackage
 // re-exports these for its existing callers.
 
 // rateLimitPattern matches well-known rate-limit phrases in error messages.
