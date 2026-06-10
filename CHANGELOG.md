@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-10
+
+### Added
+
+- Tool-result meta channel: `ToolResultMessage.Meta` (`map[string]string`,
+  `json:"meta,omitempty"`) plus `RenderToolResultMeta`, which renders meta
+  deterministically (sorted keys, `[key: value]` lines) for the LLM-bound
+  message copy. Internal consumers that join content blocks never see Meta;
+  the rendered bytes are stable across turns so provider prompt caches stay
+  valid. Additive, non-breaking.
+
 ## [0.1.1] - 2026-06-10
 
 ### Added
